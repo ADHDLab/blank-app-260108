@@ -1,180 +1,115 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
-import altair as alt
-from datetime import datetime
 
-# 페이지 구성(제목, 아이콘 등) 설정
-st.set_page_config(page_title="Streamlit 요소 예제", page_icon="✨", layout="wide")
+# 초등학교 곱셈 학습 앱
+# 이 앱은 사용자가 두 숫자를 입력하고 선택한 그림으로 곱셈 결과를 시각화한 뒤
+# 사용자가 직접 계산 결과를 입력하여 정답 여부를 확인하도록 설계되었습니다.
 
-# 상단 타이틀
-st.title("Streamlit: 단일 페이지 요소 모음")
-# 간단한 설명(마크다운) - 마크다운을 사용하면 리치 텍스트를 쓸 수 있습니다.
-st.markdown("이 페이지는 Streamlit에서 단일 페이지에 넣을 수 있는 주요 요소들의 예시와 사용법을 보여줍니다.")
+st.set_page_config(page_title="초등 곱셈 학습", page_icon="✏️", layout="centered")
 
-# --- 레이아웃 데모: 사이드바, 컬럼, 컨테이너 ---
-st.sidebar.header("사이드바 예제")
-st.sidebar.write("입력 위젯이나 설정을 사이드바에 놓을 수 있습니다.")
+st.title("초등 곱셈 연습장")
+st.markdown("간단한 곱셈을 그림으로 시각화하고 직접 답을 입력해보세요. (최대 12×12)")
 
-# 컬럼을 사용해 가로 레이아웃을 만들기
-col1, col2, col3 = st.columns([1, 2, 1])
+# --- 입력 영역: 두 숫자와 그림 선택 ---
+st.header("문제 설정")
+# 숫자 입력: 1 ~ 12 범위로 제한하여 시각화가 과도하게 커지지 않도록 함
+col_a, col_b = st.columns(2)
+with col_a:
+	a = st.number_input('첫 번째 수 (가로/행)', min_value=1, max_value=12, value=3, step=1, key='a')
+with col_b:
+	b = st.number_input('두 번째 수 (세로/열)', min_value=1, max_value=12, value=4, step=1, key='b')
 
-with col1:
-	st.header("컬럼 1")
-	st.write("간단한 텍스트와 값")
+# 그림 선택: 드롭다운 대신 그림을 직접 보고 선택할 수 있도록 구현
+st.write('사용할 그림을 아래에서 직접 선택하세요:')
+pics = [('사과', '🍎'), ('별', '⭐'), ('고양이', '🐱'), ('공', '⚽'), ('나비', '🦋')]
 
-with col2:
-	st.header("컬럼 2: 폼과 입력")
-	# 폼 예제: 여러 입력을 모아 한 번에 제출
-	with st.form(key='my_form'):
-		name = st.text_input('이름 입력', value='홍길동')  # 텍스트 입력
-		age = st.number_input('나이', min_value=0, max_value=120, value=30)
-		agree = st.checkbox('약관에 동의합니다')
-		submitted = st.form_submit_button('제출')
-		if submitted:
-			# 폼 제출 후 동작
-			st.success(f"제출 완료: {name} ({age}세), 동의: {agree}")
+# 세션 상태에 선택값이 없으면 기본값 설정
+if 'selected_pic' not in st.session_state:
+	st.session_state.selected_pic = pics[0][1]
 
-with col3:
-	st.header("컬럼 3")
-	st.metric(label='매출', value='₩1,200,000', delta='5%')  # 메트릭 위젯
+# 그림들을 가로로 배치하여 각 그림 아래에 선택 버튼을 둠
+cols_pic = st.columns(len(pics))
+for (name, emj), col in zip(pics, cols_pic):
+	with col:
+		# 이모지 크게 표시
+		st.markdown(f"<div style='font-size:48px; text-align:center'>{emj}</div>", unsafe_allow_html=True)
+		# 각 그림마다 별도의 버튼을 만들어 클릭 시 선택을 저장
+		if st.button(f"선택\n{name}", key=f"select_{name}"):
+			st.session_state.selected_pic = emj
 
-st.markdown('---')
+st.write('선택한 그림:', next(f"{n} {e}" for n, e in pics if e == st.session_state.selected_pic))
 
-# --- 텍스트와 코드 표현 ---
-st.subheader('텍스트, 마크다운, 코드, 수식')
-st.write('일반 텍스트: write()는 여러 타입을 자동 포맷합니다.')
-st.markdown('`st.markdown()` 으로 **굵은 글씨**, _기울임_ 등을 쓸 수 있습니다.')
-st.code('''# 예시 코드
-for i in range(3):
-	print(i)
-''')
-st.latex(r"E = mc^2")  # 수식
+# 버튼을 눌러 시각화 실행 — 사용자가 명시적으로 시각화를 실행하도록 함
+if 'visualized' not in st.session_state:
+	st.session_state.visualized = False
 
-# --- 인터랙티브 위젯 모음 ---
-st.subheader('입력 위젯 예시')
-# 텍스트 입력
-txt = st.text_input('텍스트 입력', placeholder='여기에 입력하세요')
-# 텍스트 영역(여러 줄)
-memo = st.text_area('메모', value='여러 줄 텍스트를 입력하세요')
-# 숫자 입력
-num = st.number_input('숫자 입력', value=10)
-# 슬라이더
-slider_val = st.slider('슬라이더', min_value=0, max_value=100, value=25)
-# 선택 박스
-option = st.selectbox('선택박스', ['옵션 A', '옵션 B', '옵션 C'])
-# 다중 선택
-multi = st.multiselect('다중 선택', ['사과', '배', '바나나'], default=['사과'])
-# 라디오 버튼
-choice = st.radio('라디오', ['하나', '둘', '셋'])
-# 체크박스
-check = st.checkbox('체크박스 예')
-# 버튼
-if st.button('버튼 클릭'):
-	st.info('버튼이 클릭되었습니다')
+if st.button('시각화'):
+	# 시각화 요청 시 세션 상태에 값 저장
+	st.session_state.visualized = True
+	st.session_state.rows = a
+	st.session_state.cols = b
+	# 선택된 그림(세션 상태)을 사용 — 기본값은 사과
+	st.session_state.emoji = st.session_state.get('selected_pic', '🍎')
+	# 정답 체크 결과 초기화
+	st.session_state.checked = False
+	st.session_state.last_result = None
 
-# 날짜/시간 입력
-date = st.date_input('날짜 선택', value=datetime.today())
-time = st.time_input('시간 선택', value=datetime.now().time())
-
-# 파일 업로드
-uploaded = st.file_uploader('파일 업로드', type=['csv', 'txt'])
-if uploaded is not None:
-	st.write('업로드된 파일 이름:', uploaded.name)
-	# 판다스로 읽어 화면에 출력 (CSV 가정)
-	try:
-		df_up = pd.read_csv(uploaded)
-		st.dataframe(df_up.head())
-	except Exception:
-		st.write('CSV가 아닌 파일입니다. 파일 내용을 텍스트로 표시합니다.')
-		st.text(uploaded.getvalue().decode('utf-8'))
-
-# 색상 선택기
-color = st.color_picker('색상 선택', '#00f900')
+# 초기화 버튼: 모든 학습 상태를 제거
+if st.button('초기화'):
+	for k in list(st.session_state.keys()):
+		del st.session_state[k]
+	st.experimental_rerun()
 
 st.markdown('---')
 
-# --- 데이터 표시 및 차트 ---
-st.subheader('데이터와 차트')
-# 예제 데이터프레임 생성
-df = pd.DataFrame({
-	'x': np.arange(1, 11),
-	'y': np.random.randn(10).cumsum(),
-	'category': ['A', 'B'] * 5
-})
+# --- 시각화 영역: 그림으로 곱셈 결과 표시 ---
+if st.session_state.get('visualized'):
+	rows = st.session_state.rows
+	cols = st.session_state.cols
+	emoji = st.session_state.emoji
 
-st.dataframe(df)  # 인터랙티브한 데이터프레임
-st.table(df.head())  # 정적 테이블
+	st.header('시각화')
+	st.write(f"문제: {rows} × {cols} = ?")
+	st.write('아래 그림을 보며 곱셈의 의미(행 × 열)를 이해해보세요.')
 
-# 간단한 내장 차트
-st.line_chart(df[['x', 'y']].set_index('x'))
-st.area_chart(df[['x', 'y']].set_index('x'))
-st.bar_chart(pd.DataFrame({'a': np.random.randint(0, 10, 5)}))
+	# 그림을 행/열 형태로 표시
+	# 각 행마다 컬럼을 생성해서 가운데 정렬된 이모지를 표시
+	for r in range(rows):
+		cols_layout = st.columns(cols)
+		for c_idx, col in enumerate(cols_layout):
+			# HTML을 이용해 이모지 크기를 키워서 보기 쉽게 만듦
+			col.markdown(f"<div style='font-size:36px; text-align:center'>{emoji}</div>", unsafe_allow_html=True)
 
-# Altair 예제: 더 복잡한 차트
-chart = alt.Chart(df).mark_circle(size=60).encode(x='x', y='y', color='category')
-st.altair_chart(chart, use_container_width=True)
+	st.markdown('---')
 
+	# --- 정답 입력 및 채점 ---
+	st.subheader('정답 입력')
+	# 사용자가 입력한 값으로 정답 확인 버튼을 눌러 채점
+	user_answer = st.number_input('곱셈 결과를 입력하세요', min_value=0, max_value=200, value=0, step=1, key='user_answer')
+	if st.button('정답 확인'):
+		correct = rows * cols
+		is_correct = (int(user_answer) == correct)
+		st.session_state.checked = True
+		st.session_state.last_result = is_correct
+		if is_correct:
+			st.success(f'정답입니다! {rows} × {cols} = {correct}')
+		else:
+			st.error(f'틀렸어요. 다시 시도해보세요. (힌트: {rows} × {cols} = {correct})')
+
+	# 사용자가 채점 후 결과 확인 영역
+	if st.session_state.get('checked'):
+		if st.session_state.last_result:
+			st.balloons()
+
+	# 학습 팁 섹션: 왜 곱셈을 이렇게 시각화하는지 설명
+	with st.expander('학습 팁: 왜 이렇게 시각화하나요?'):
+		st.write('행×열로 배열을 그리면 곱셈이 덧셈의 반복임을 쉽게 이해할 수 있습니다.')
+
+else:
+	st.info('왼쪽에서 두 수를 입력하고 "시각화" 버튼을 눌러 시작하세요.')
+
+# 하단 도움말: 간단한 사용 가이드
 st.markdown('---')
+st.caption('사용법: 숫자를 선택 → 그림 선택 → "시각화" → 결과 입력 → "정답 확인"')
 
-# --- 미디어: 이미지/오디오/비디오/맵 ---
-st.subheader('미디어')
-st.image('https://placekitten.com/400/200', caption='예시 이미지')
-st.audio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3')
-st.video('https://www.w3schools.com/html/mov_bbb.mp4')
-
-# 지도 예제: 위도/경도 컬럼을 가진 데이터프레임 필요
-map_df = pd.DataFrame({
-	'lat': [37.5665, 37.5651, 37.5700],
-	'lon': [126.9780, 126.9895, 126.9768]
-})
-st.map(map_df)
-
-st.markdown('---')
-
-# --- 상태/피드백 위젯 ---
-st.subheader('상태 표시 및 진행')
-with st.spinner('작업 중... 잠시 기다려주세요'):
-	# 가벼운 연산 시뮬레이션
-	np.random.seed(0)
-	_ = np.random.randn(1000).sum()
-st.success('완료!')
-
-progress = st.progress(0)
-for i in range(100):
-	progress.progress(i + 1)
-
-st.balloons()  # 축하 애니메이션
-
-st.info('정보 메시지 예')
-st.warning('경고 메시지 예')
-st.error('에러 메시지 예')
-
-st.markdown('---')
-
-# --- 확장 가능한 섹션(Expander)과 탭(Tabs) ---
-with st.expander('추가 설명 (펼치기)'):
-	st.write('여기에 상세 설명이나 옵션을 넣을 수 있습니다.')
-
-tab1, tab2 = st.tabs(['탭 1', '탭 2'])
-with tab1:
-	st.write('탭 1 내용')
-with tab2:
-	st.write('탭 2 내용')
-
-st.markdown('---')
-
-# --- 외부 데이터 불러오기(작업 예시) ---
-st.subheader('로컬 CSV 불러오기 예시')
-try:
-	# workspace 내 data/gdp_data.csv 파일이 있으면 읽어서 차트 출력
-	gdp = pd.read_csv('data/gdp_data.csv')
-	st.write('`data/gdp_data.csv`에서 일부 데이터:')
-	st.dataframe(gdp.head())
-except FileNotFoundError:
-	st.write('데이터 파일이 없습니다: data/gdp_data.csv')
-
-# 하단 메모: 학습용 각주(주석은 코드에 남겨놨습니다)
-st.caption('이 파일의 주석을 읽어보면 각 위젯의 사용법을 배울 수 있습니다.')
 
 
